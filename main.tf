@@ -90,6 +90,25 @@ resource "aws_lambda_function" "lambda_function" {
     ]
 }
 
+resource "aws_cloudwatch_event_rule" "schedule_rule" {
+  name        = "orphan-snapshots-schedule-rule"
+  description = "Trigger Lambda every day to delete orphaned snapshots"
+  schedule_expression = "rate(24 hours)"
+}
+
+resource "aws_cloudwatch_event_target" "target" {
+  rule      = aws_cloudwatch_event_rule.schedule_rule.name
+  arn       = aws_lambda_function.lambda_function.arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.schedule_rule.arn
+}
+
 output "terraform_aws_role_output" {
     value = aws_iam_role.lambda_role.name
 }
